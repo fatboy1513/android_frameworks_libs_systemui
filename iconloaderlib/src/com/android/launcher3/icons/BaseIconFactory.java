@@ -43,6 +43,7 @@ import com.android.launcher3.util.FlagOp;
 import com.android.launcher3.util.UserIconInfo;
 
 import java.lang.annotation.Retention;
+import java.lang.Math;
 import java.util.Objects;
 
 /**
@@ -354,12 +355,11 @@ public class BaseIconFactory implements AutoCloseable {
         return new InsetDrawable(main, scaleX, scaleY, scaleX, scaleY);
     }
 
-    private static int getFirstValidColor(Bitmap bm, int dir, int[] outDistances) {
+    private static int getFirstValidColor(Bitmap bm, int dir) {
         if (dir == 0) { // left
             for (int x = 0; x < 16; x++) {
                 int color = bm.getPixel(x, 16);
                 if (color != 0xFFFFFF && color != 0xFFFFFFFF && color != 0xFF000000 && color != 0) {
-                    outDistances[dir] = x;
                     return color;
                 }
             }
@@ -367,7 +367,6 @@ public class BaseIconFactory implements AutoCloseable {
             for (int y = 0; y < 16; y++) {
                 int color = bm.getPixel(16, y);
                 if (color != 0xFFFFFF && color != 0xFFFFFFFF && color != 0xFF000000 && color != 0) {
-                    outDistances[dir] = y;
                     return color;
                 }
             }
@@ -375,7 +374,6 @@ public class BaseIconFactory implements AutoCloseable {
             for (int x = 31; x >= 16; x--) {
                 int color = bm.getPixel(x, 16);
                 if (color != 0xFFFFFF && color != 0xFFFFFFFF && color != 0xFF000000 && color != 0) {
-                    outDistances[dir] = 31 - x;
                     return color;
                 }
             }
@@ -383,7 +381,6 @@ public class BaseIconFactory implements AutoCloseable {
             for (int y = 31; y >= 16; y--) {
                 int color = bm.getPixel(16, y);
                 if (color != 0xFFFFFF && color != 0xFFFFFFFF && color != 0xFF000000 && color != 0) {
-                    outDistances[dir] = 31 - y;
                     return color;
                 }
             }
@@ -400,24 +397,14 @@ public class BaseIconFactory implements AutoCloseable {
             return aid;
         } else {
             Bitmap bm = iconToBitmap(icon, 32, Bitmap.Config.ARGB_8888);
-            int[] outDistances = new int[4];
-            int left = getFirstValidColor(bm, 0, outDistances);
-            int top = getFirstValidColor(bm, 1, outDistances);
-            int right = getFirstValidColor(bm, 2, outDistances);
-            int bottom = getFirstValidColor(bm, 3, outDistances);
+            int left = getFirstValidColor(bm, 0);
+            int top = getFirstValidColor(bm, 1);
+            int right = getFirstValidColor(bm, 2);
+            int bottom = getFirstValidColor(bm, 3);
             int background = mWrapperBackgroundColor;
-            if ((top & 0xFF000000) == 0xFF000000 && /*rgbSimilar(top, bottom) &&*/ rgbSimilar(top, left) && rgbSimilar(top, right)) {
-                // if (Math.abs(outDistances[0] - outDistances[1]) < 3 &&
-                //     Math.abs(outDistances[0] - outDistances[2]) < 3 &&
-                //     Math.abs(outDistances[0] - outDistances[3]) < 3) {
+            if ((top & 0xFF000000) > 0xEE000000 && rgbSimilar(top, left) && rgbSimilar(top, right)) {
                 background = top;
-                // }
             }
-
-            // int dp1 = bm.getPixel(0, 0);
-            // int dp2 = bm.getPixel(0, 31);
-            // int dp3 = bm.getPixel(31, 0);
-            // int dp4 = bm.getPixel(31, 31);
 
             EmptyWrapper foreground = new EmptyWrapper();
             AdaptiveIconDrawable dr = new AdaptiveIconDrawable(
@@ -436,17 +423,17 @@ public class BaseIconFactory implements AutoCloseable {
     }
 
     public static boolean rgbSimilar(int color1, int color2) {
-        // int r1 = (color1 >> 16) & 0xff;
-        // int r2 = (color2 >> 16) & 0xff;
-        // int g1 = (color1 >> 8) & 0xff;
-        // int g2 = (color2 >> 8) & 0xff;
-        // int b1 = color1 & 0xff;
-        // int b2 = color2 & 0xff;
-        // if (Matf.abs(r1 - r2) < 16 && Matf.abs(g1 - g2) && Matf.abs(b1 - b2)) {
-        //     return true;
-        // }
-        // return false;
-        return color1 == color2;
+        int r1 = (color1 >> 16) & 0xff;
+        int r2 = (color2 >> 16) & 0xff;
+        int g1 = (color1 >> 8) & 0xff;
+        int g2 = (color2 >> 8) & 0xff;
+        int b1 = color1 & 0xff;
+        int b2 = color2 & 0xff;
+        if (Math.abs(r1 - r2) < 32 && Math.abs(g1 - g2) < 32 && Math.abs(b1 - b2) < 32) {
+            return true;
+        }
+        return false;
+        // return color1 == color2;
     }
 
     public static Bitmap iconToBitmap(Drawable drawable, int size, Bitmap.Config config) {
